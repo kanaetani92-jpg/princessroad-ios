@@ -1,0 +1,18 @@
+{
+  "name": "プリンセスロード",
+  "short_name": "プリンセスロード",
+  "description": "願いを15分のレッスンに分け、次の一歩へ進む行動支援アプリ",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#fff7fc",
+  "theme_color": "#4c2756",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

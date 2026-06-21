@@ -1,0 +1,87 @@
+workflows:
+  ios-capacitor-check:
+    name: Princess Road iOS Check
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+
+    environment:
+      node: latest
+      xcode: latest
+      cocoapods: default
+
+    scripts:
+      - name: Install npm dependencies
+        script: |
+          npm ci
+
+      - name: Validate Princess Road assets
+        script: |
+          npm run validate
+
+      - name: Sync Capacitor iOS
+        script: |
+          npx cap sync ios
+
+      - name: Show iOS project files
+        script: |
+          ls -la
+          ls -la ios
+          ls -la ios/App
+          ls -la ios/App/App/public
+
+    artifacts:
+      - ios/App/App.xcodeproj
+      - ios/App/App
+
+  ios-ipa-build:
+    name: Princess Road IPA Build
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+
+    integrations:
+      app_store_connect: denshatimer
+
+    environment:
+      node: latest
+      xcode: latest
+      cocoapods: default
+
+      vars:
+        BUNDLE_ID: "works.psychcraft.princessroad"
+        XCODE_PROJECT: "ios/App/App.xcodeproj"
+        XCODE_SCHEME: "App"
+
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: works.psychcraft.princessroad
+
+    scripts:
+      - name: Install npm dependencies
+        script: |
+          npm ci
+
+      - name: Validate Princess Road assets
+        script: |
+          npm run validate
+
+      - name: Sync Capacitor iOS
+        script: |
+          npx cap sync ios
+
+      - name: Apply code signing profiles
+        script: |
+          xcode-project use-profiles
+
+      - name: Build IPA
+        script: |
+          xcode-project build-ipa \
+            --project "$XCODE_PROJECT" \
+            --scheme "$XCODE_SCHEME"
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      app_store_connect:
+        auth: integration
