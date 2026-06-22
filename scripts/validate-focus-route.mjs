@@ -56,6 +56,9 @@ requireText("web", "set-timer-ring-mode");
 requireText("web", "きらめきごと");
 requireText("web", "タスクごと");
 requireText("web", "focusRingRemainingSeconds");
+requireText("web", "historyDateSummary");
+requireText("web", "updateHistoryDateDisplay");
+requireText("web", "選択中の実施日");
 
 if (contents.web !== contents.publicWeb) {
   throw new Error("www/index.html and ios/App/App/public/index.html are not synchronized");

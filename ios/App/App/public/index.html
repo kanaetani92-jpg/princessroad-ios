@@ -1024,7 +1024,18 @@
       <div class="dialog-header"><h2 id="historyEditorTitle">記録を編集</h2><button class="icon-button" type="button" data-action="close-history-editor" aria-label="閉じる">×</button></div>
       <div class="dialog-body">
         <input id="historyEditorId" type="hidden">
-        <div class="field"><label for="historyDateInput">実施日</label><input id="historyDateInput" type="date" required></div>
+        <div class="field">
+          <label for="historyDateInput">実施日</label>
+          <div class="deadline-control">
+            <input id="historyDateInput" class="deadline-input" type="date" required aria-label="実施日を選ぶ">
+            <button id="historyDatePickerButton" class="deadline-picker" type="button" aria-haspopup="dialog">
+              <span id="historyDateSummary" class="deadline-summary is-empty" aria-live="polite">
+                <span>選択中の実施日</span>
+                <strong>実施日を選択してください</strong>
+              </span>
+            </button>
+          </div>
+        </div>
         <div class="field"><label for="historyTaskInput">レッスン名</label><input id="historyTaskInput" maxlength="80"></div>
         <div class="field"><label for="historyMemoInput">メモ</label><input id="historyMemoInput" maxlength="160" placeholder="振り返りを短く記録"></div>
         <p id="historyFixedInfo" class="warning-box"></p>
@@ -1144,6 +1155,9 @@
       var taskMoveDialog = document.getElementById("taskMoveDialog");
       var historyEditorDialog = document.getElementById("historyEditorDialog");
       var historyEditorForm = document.getElementById("historyEditorForm");
+      var historyDateInput = document.getElementById("historyDateInput");
+      var historyDatePickerButton = document.getElementById("historyDatePickerButton");
+      var historyDateSummary = document.getElementById("historyDateSummary");
       var lessonDialog = document.getElementById("lessonDialog");
       var lessonForm = document.getElementById("lessonForm");
       var lessonIdInput = document.getElementById("lessonIdInput");
@@ -1816,21 +1830,40 @@
         return new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", weekday: "short" }).format(date);
       }
 
-      function updateDeadlineDisplay() {
-        var dateValue = routeDeadlineInput.value;
-        deadlineSummary.classList.remove("is-empty", "is-sunday", "is-saturday");
+      function updateDateSummary(input, summary, emptyText) {
+        var dateValue = input.value;
+        summary.classList.remove("is-empty", "is-sunday", "is-saturday");
         if (!dateValue) {
-          deadlineSummary.classList.add("is-empty");
-          deadlineSummary.querySelector("strong").textContent = "締切日は未設定です";
+          summary.classList.add("is-empty");
+          summary.querySelector("strong").textContent = emptyText;
           return;
         }
         var date = new Date(dateValue + "T00:00:00");
         var weekday = date.getDay();
-        if (weekday === 0) deadlineSummary.classList.add("is-sunday");
-        if (weekday === 6) deadlineSummary.classList.add("is-saturday");
-        deadlineSummary.querySelector("strong").textContent = new Intl.DateTimeFormat("ja-JP", {
+        if (weekday === 0) summary.classList.add("is-sunday");
+        if (weekday === 6) summary.classList.add("is-saturday");
+        summary.querySelector("strong").textContent = new Intl.DateTimeFormat("ja-JP", {
           year: "numeric", month: "long", day: "numeric", weekday: "short"
         }).format(date);
+      }
+
+      function updateDeadlineDisplay() {
+        updateDateSummary(routeDeadlineInput, deadlineSummary, "締切日は未設定です");
+      }
+
+      function updateHistoryDateDisplay() {
+        updateDateSummary(historyDateInput, historyDateSummary, "実施日を選択してください");
+      }
+
+      function openDatePicker(input) {
+        try {
+          if (typeof input.showPicker === "function") {
+            input.showPicker();
+            return;
+          }
+        } catch (error) {}
+        input.focus();
+        input.click();
       }
 
       function stationLine(route, compact) {
@@ -2317,7 +2350,8 @@
         var item = state.history.find(function (record) { return record.id === id; });
         if (!item) return;
         document.getElementById("historyEditorId").value = item.id;
-        document.getElementById("historyDateInput").value = localDateInput(item.completedAt);
+        historyDateInput.value = localDateInput(item.completedAt);
+        updateHistoryDateDisplay();
         document.getElementById("historyTaskInput").value = historyLessonName(item);
         document.getElementById("historyMemoInput").value = item.memo || "";
         document.getElementById("historyFixedInfo").textContent = "実測時間 " + displayMinutes(historyMinutes(item)) + "分と完了状態は、記録の正確性を保つため変更できません。";
@@ -2331,7 +2365,7 @@
         });
         if (!item) return;
         var original = new Date(item.completedAt);
-        var parts = document.getElementById("historyDateInput").value.split("-").map(Number);
+        var parts = historyDateInput.value.split("-").map(Number);
         if (parts.length === 3) {
           item.completedAt = new Date(parts[0], parts[1] - 1, parts[2], original.getHours(), original.getMinutes(), original.getSeconds()).getTime();
         }
@@ -2362,7 +2396,7 @@
       }
 
       function exportBackup() {
-        var content = JSON.stringify({ app: "プリンセスロード", schemaVersion: 6, exportedAt: new Date().toISOString(), state: state }, null, 2);
+        var content = JSON.stringify({ app: "プリンセスロード", schemaVersion: 7, exportedAt: new Date().toISOString(), state: state }, null, 2);
         var bridge = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.LocalDataBridge;
         if (bridge) {
           bridge.postMessage({ action: "shareBackup", fileName: backupFileName(), content: content });
@@ -3764,17 +3798,15 @@
         if (selectedTab) selectedTab.focus();
       });
       deadlinePickerButton.addEventListener("click", function () {
-        try {
-          if (typeof routeDeadlineInput.showPicker === "function") {
-            routeDeadlineInput.showPicker();
-            return;
-          }
-        } catch (error) {}
-        routeDeadlineInput.focus();
-        routeDeadlineInput.click();
+        openDatePicker(routeDeadlineInput);
+      });
+      historyDatePickerButton.addEventListener("click", function () {
+        openDatePicker(historyDateInput);
       });
       routeDeadlineInput.addEventListener("input", updateDeadlineDisplay);
       routeDeadlineInput.addEventListener("change", updateDeadlineDisplay);
+      historyDateInput.addEventListener("input", updateHistoryDateDisplay);
+      historyDateInput.addEventListener("change", updateHistoryDateDisplay);
       routeSparkleMinutesInput.addEventListener("change", function () {
         document.getElementById("routeSparkleDurationHint").textContent = "このおしろは1きらめき＝" + editorSparkleMinutes() + "分です。時間はきらめき数から自動計算されます。";
         stationEditor.querySelectorAll(".station-row").forEach(function (row) {
